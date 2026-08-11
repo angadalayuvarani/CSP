@@ -1,0 +1,23 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+# SQLite database
+*.sqlite
+*.sqlite3
+*.db
+
+# Uploaded files
+backend/uploads/*
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/

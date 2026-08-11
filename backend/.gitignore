@@ -1,0 +1,5 @@
+node_modules/
+db/aquatrack.sqlite
+uploads/*
+!uploads/.gitkeep
+.env

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complaint Detail — AquaTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="topbar" id="topbar"></header>
+
+<div class="shell">
+  <div id="justSubmittedBanner" class="form-success" style="display:none; margin-bottom:20px;"></div>
+  <div class="page-head">
+    <div>
+      <div class="eyebrow" id="crumb">Complaint Detail</div>
+      <h2 id="titleLine">Loading…</h2>
+    </div>
+    <span class="badge" id="statusBadge"></span>
+  </div>
+
+  <div class="detail-grid" id="content" style="display:none;">
+    <div class="main">
+      <div class="card">
+        <h4>Problem description</h4>
+        <p id="descText" class="muted"></p>
+
+        <div id="imageWrap"></div>
+
+        <h4 class="mt-24">Reported location</h4>
+        <p class="muted small" id="addressText"></p>
+        <p class="muted small" id="coordsText"></p>
+        <a id="mapLink" target="_blank" class="small" style="display:none">Open in Google Maps →</a>
+      </div>
+
+      <div class="card mt-16" id="adminActions" style="display:none;">
+        <h4>Department actions</h4>
+        <div class="field">
+          <label for="assignSelect">Assign to staff</label>
+          <div style="display:flex; gap:8px;">
+            <select id="assignSelect" style="flex:1"></select>
+            <button class="btn btn-dark btn-sm" id="assignBtn">Assign</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="statusSelect">Update status</label>
+          <div style="display:flex; gap:8px;">
+            <select id="statusSelect" style="flex:1">
+              <option>Submitted</option>
+              <option>Assigned</option>
+              <option>In Progress</option>
+              <option>Resolved</option>
+              <option>Closed</option>
+            </select>
+            <button class="btn btn-primary btn-sm" id="statusBtn">Update</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="remarksInput">Remarks (visible in complaint history)</label>
+          <input type="text" id="remarksInput" placeholder="e.g. Leak repaired, pipe section replaced">
+        </div>
+        <div class="form-error" id="adminErr"></div>
+        <div class="form-success" id="adminOk"></div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <h4>Complaint info</h4>
+        <div class="kv"><span>Complaint ID</span><span id="idKv">—</span></div>
+        <div class="kv"><span>Type</span><span id="typeKv">—</span></div>
+        <div class="kv"><span>Filed on</span><span id="dateKv">—</span></div>
+        <div class="kv"><span>Citizen</span><span id="citizenKv">—</span></div>
+        <div class="kv"><span>Assigned staff</span><span id="staffKv">—</span></div>
+      </div>
+
+      <div class="card">
+        <h4>Status timeline</h4>
+        <ul class="timeline" id="timelineList"></ul>
+      </div>
+    </div>
+  </div>
+
+  <p class="muted" id="loadingMsg">Loading complaint details…</p>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  const user = Session.getUser();
+  if (!Session.isLoggedIn()) window.location.href = "/pages/login.html";
+  renderTopbar("topbar", { role: user.role });
+
+  const params = new URLSearchParams(window.location.search);
+  const complaintId = params.get("id");
+  const isAdmin = user.role === "admin";
+
+  if (params.get("justSubmitted")) {
+    const b = document.getElementById("justSubmittedBanner");
+    b.textContent = "Your complaint has been submitted successfully. You can track its progress below.";
+    b.style.display = "block";
+  }
+
+  document.getElementById("crumb").textContent = isAdmin ? "Admin · Complaint Detail" : "My Complaints · Detail";
+
+  async function load() {
+    try {
+      const c = await apiRequest(`/complaints/${complaintId}`);
+
+      document.getElementById("loadingMsg").style.display = "none";
+      document.getElementById("content").style.display = "grid";
+
+      document.getElementById("titleLine").textContent = `${c.complaint_type} — #AQT-${String(c.id).padStart(4,'0')}`;
+      const badge = document.getElementById("statusBadge");
+      badge.textContent = c.status;
+      badge.className = `badge ${statusBadgeClass(c.status)}`;
+
+      document.getElementById("descText").textContent = c.description;
+
+      if (c.image_path) {
+        document.getElementById("imageWrap").innerHTML = `
+          <div class="detail-image mt-16"><img src="${c.image_path}" alt="Complaint photo"></div>`;
+      }
+
+      document.getElementById("addressText").textContent = c.address || "No address provided.";
+      if (c.latitude && c.longitude) {
+        document.getElementById("coordsText").textContent = `GPS: ${Number(c.latitude).toFixed(5)}, ${Number(c.longitude).toFixed(5)}`;
+        const link = document.getElementById("mapLink");
+        link.href = `https://www.google.com/maps?q=${c.latitude},${c.longitude}`;
+        link.style.display = "inline-block";
+      }
+
+      document.getElementById("idKv").textContent = `AQT-${String(c.id).padStart(4,'0')}`;
+      document.getElementById("typeKv").textContent = c.complaint_type;
+      document.getElementById("dateKv").textContent = formatDate(c.created_at);
+      document.getElementById("citizenKv").textContent = c.citizen_name ? `${c.citizen_name} (${c.citizen_phone || "no phone"})` : "—";
+      document.getElementById("staffKv").textContent = c.staff_name || "Not yet assigned";
+
+      // Timeline
+      const tl = document.getElementById("timelineList");
+      tl.innerHTML = (c.history || []).map(h => `
+        <li>
+          <div class="dot"></div>
+          <div class="content">
+            <h5>${escapeHtml(h.status)}</h5>
+            <p>${h.remarks ? escapeHtml(h.remarks) + " · " : ""}${formatDate(h.changed_at)}</p>
+          </div>
+        </li>
+      `).join("") || `<li><div class="dot"></div><div class="content"><p class="muted">No history yet.</p></div></li>`;
+
+      // Admin controls
+      if (isAdmin) {
+        document.getElementById("adminActions").style.display = "block";
+        document.getElementById("statusSelect").value = c.status;
+        if (c.assigned_staff_id) document.getElementById("assignSelect").dataset.current = c.assigned_staff_id;
+        await loadStaffOptions(c.assigned_staff_id);
+      }
+    } catch (err) {
+      document.getElementById("loadingMsg").textContent = err.message;
+    }
+  }
+
+  async function loadStaffOptions(currentStaffId) {
+    try {
+      const staff = await apiRequest("/admin/staff");
+      const select = document.getElementById("assignSelect");
+      select.innerHTML = `<option value="">Select staff…</option>` + staff.map(s =>
+        `<option value="${s.id}" ${s.id === currentStaffId ? "selected" : ""}>${escapeHtml(s.name)} — ${escapeHtml(s.designation || "")} (${escapeHtml(s.zone || "")})</option>`
+      ).join("");
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  if (isAdmin) {
+    document.getElementById("assignBtn").addEventListener("click", async () => {
+      const staffId = document.getElementById("assignSelect").value;
+      const errEl = document.getElementById("adminErr");
+      const okEl = document.getElementById("adminOk");
+      errEl.style.display = "none"; okEl.style.display = "none";
+      if (!staffId) { errEl.textContent = "Please select a staff member."; errEl.style.display = "block"; return; }
+      try {
+        await apiRequest(`/admin/complaints/${complaintId}/assign`, { method: "PUT", body: { staff_id: staffId } });
+        okEl.textContent = "Complaint assigned successfully.";
+        okEl.style.display = "block";
+        load();
+      } catch (err) {
+        errEl.textContent = err.message; errEl.style.display = "block";
+      }
+    });
+
+    document.getElementById("statusBtn").addEventListener("click", async () => {
+      const status = document.getElementById("statusSelect").value;
+      const remarks = document.getElementById("remarksInput").value.trim();
+      const errEl = document.getElementById("adminErr");
+      const okEl = document.getElementById("adminOk");
+      errEl.style.display = "none"; okEl.style.display = "none";
+      try {
+        await apiRequest(`/admin/complaints/${complaintId}/status`, { method: "PUT", body: { status, remarks } });
+        okEl.textContent = "Status updated successfully.";
+        okEl.style.display = "block";
+        document.getElementById("remarksInput").value = "";
+        load();
+      } catch (err) {
+        errEl.textContent = err.message; errEl.style.display = "block";
+      }
+    });
+  }
+
+  load();
+</script>
+</body>
+</html>

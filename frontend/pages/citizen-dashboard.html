@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Complaints — AquaTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="topbar" id="topbar"></header>
+
+<div class="shell">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">Citizen Portal</div>
+      <h2>My Complaints</h2>
+      <p>Every issue you've reported, and where it stands today.</p>
+    </div>
+    <a class="btn btn-primary" href="/pages/submit-complaint.html">+ Report New Issue</a>
+  </div>
+
+  <div id="listArea">
+    <p class="muted">Loading your complaints…</p>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  Session.requireRole("citizen");
+  renderTopbar("topbar", { role: "citizen" });
+
+  async function load() {
+    const listArea = document.getElementById("listArea");
+    try {
+      const complaints = await apiRequest("/complaints/mine");
+      if (!complaints.length) {
+        listArea.innerHTML = `
+          <div class="empty-state">
+            <span class="drop"></span>
+            <h3>No complaints yet</h3>
+            <p>When you report a water issue, it will show up here so you can track its progress.</p>
+            <a class="btn btn-primary mt-16" href="/pages/submit-complaint.html">Report your first issue</a>
+          </div>`;
+        return;
+      }
+
+      listArea.innerHTML = complaints.map(c => `
+        <a class="complaint-card" href="/pages/complaint-detail.html?id=${c.id}">
+          ${c.image_path
+            ? `<img class="thumb" src="${c.image_path}" alt="">`
+            : `<div class="thumb placeholder">💧</div>`}
+          <div class="body">
+            <h4>${escapeHtml(c.complaint_type)} <span class="muted small">#AQT-${String(c.id).padStart(4,'0')}</span></h4>
+            <p>${escapeHtml(c.description)}</p>
+          </div>
+          <div class="meta">
+            <span class="badge ${statusBadgeClass(c.status)}">${c.status}</span>
+            <span class="date">${formatDate(c.created_at)}</span>
+          </div>
+        </a>
+      `).join("");
+    } catch (err) {
+      listArea.innerHTML = `<div class="form-error" style="display:block">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>

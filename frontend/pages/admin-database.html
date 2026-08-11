@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Database Viewer — AquaTrack Admin</title>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="/css/style.css">
+
+  <style>
+    .database-toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .database-toolbar select {
+      min-width: 280px;
+    }
+
+    .database-search {
+      min-width: 280px;
+      padding: 11px 14px;
+      border: 1px solid #dfe5e7;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      background: white;
+    }
+
+    .database-search:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .record-count {
+      font-size: 0.9rem;
+      color: #667;
+      margin-left: auto;
+    }
+
+    .database-table-wrap {
+      overflow-x: auto;
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .database-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+
+    .database-table th {
+      background: #f4f7f8;
+      padding: 13px;
+      text-align: left;
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+
+    .database-table td {
+      padding: 12px;
+      border-top: 1px solid #edf0f1;
+      font-size: 0.85rem;
+      vertical-align: top;
+    }
+
+    .database-table tr:hover {
+      background: #fafcfc;
+    }
+
+    .null-value {
+      color: #999;
+      font-style: italic;
+    }
+
+    .loading {
+      padding: 30px;
+      text-align: center;
+    }
+
+    .no-results {
+      padding: 40px;
+      text-align: center;
+      color: #777;
+    }
+
+    /* Pagination */
+
+    .pagination-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .pagination-btn {
+      min-width: 38px;
+      height: 38px;
+      padding: 0 10px;
+      border: 1px solid #dfe5e7;
+      background: white;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: 0.2s ease;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+      background: #f1f5f9;
+    }
+
+    .pagination-btn.active {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+    }
+
+    .pagination-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .pagination-info {
+      text-align: center;
+      margin-top: 10px;
+      color: #667;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+
+      .database-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .database-toolbar select,
+      .database-search {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .record-count {
+        margin-left: 0;
+      }
+
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Existing AquaTrack Topbar -->
+  <header class="topbar" id="topbar"></header>
+
+  <div class="shell">
+
+    <!-- Page Header -->
+    <div class="page-head">
+
+      <div>
+
+        <div class="eyebrow">
+          Administration
+        </div>
+
+        <h2>
+          Database Viewer
+        </h2>
+
+        <p>
+          View the data currently stored in the AquaTrack SQLite database.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <!-- Toolbar -->
+    <div class="database-toolbar">
+
+      <!-- Table Selection -->
+      <select id="tableSelect">
+
+        <option value="users">
+          Users
+        </option>
+
+        <option value="staff">
+          Staff
+        </option>
+
+        <option value="complaints">
+          Complaints
+        </option>
+
+        <option value="complaint_status_history">
+          Complaint Status History
+        </option>
+
+      </select>
+
+
+      <!-- Search -->
+      <input
+        type="text"
+        id="searchInput"
+        class="database-search"
+        placeholder="🔍 Search records..."
+        autocomplete="off"
+      >
+
+
+      <!-- Refresh -->
+      <button
+        class="btn btn-primary"
+        id="refreshBtn"
+      >
+        Refresh
+      </button>
+
+
+      <!-- Record Count -->
+      <span
+        class="record-count"
+        id="recordCount"
+      ></span>
+
+    </div>
+
+
+    <!-- Error -->
+    <div id="errorMessage"></div>
+
+
+    <!-- Database Table -->
+    <div class="database-table-wrap">
+
+      <div id="tableContainer">
+
+        <div class="loading">
+          Select a table to view its data.
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- Pagination -->
+    <div
+      class="pagination-container"
+      id="paginationContainer"
+    ></div>
+
+
+    <!-- Pagination Information -->
+    <div
+      class="pagination-info"
+      id="paginationInfo"
+    ></div>
+
+  </div>
+
+
+  <!-- Existing API -->
+  <script src="/js/api.js"></script>
+
+
+  <script>
+
+    /*
+     * ======================================================
+     * AquaTrack Database Viewer
+     * ======================================================
+     */
+
+
+    /*
+     * ------------------------------------------------------
+     * Admin Protection
+     * ------------------------------------------------------
+     */
+
+    Session.requireRole("admin");
+
+
+    /*
+     * ------------------------------------------------------
+     * Existing Topbar
+     * ------------------------------------------------------
+     */
+
+    renderTopbar("topbar", {
+      role: "admin"
+    });
+
+
+    /*
+     * ------------------------------------------------------
+     * DOM Elements
+     * ------------------------------------------------------
+     */
+
+    const tableSelect =
+      document.getElementById("tableSelect");
+
+    const searchInput =
+      document.getElementById("searchInput");
+
+    const refreshBtn =
+      document.getElementById("refreshBtn");
+
+    const tableContainer =
+      document.getElementById("tableContainer");
+
+    const recordCount =
+      document.getElementById("recordCount");
+
+    const errorMessage =
+      document.getElementById("errorMessage");
+
+    const paginationContainer =
+      document.getElementById("paginationContainer");
+
+    const paginationInfo =
+      document.getElementById("paginationInfo");
+
+
+    /*
+     * ------------------------------------------------------
+     * Database Data
+     * ------------------------------------------------------
+     */
+
+    let currentRows = [];
+
+
+    /*
+     * ------------------------------------------------------
+     * Pagination Settings
+     * ------------------------------------------------------
+     */
+
+    const rowsPerPage = 10;
+
+    let currentPage = 1;
+
+
+    /*
+     * ------------------------------------------------------
+     * Escape HTML
+     * ------------------------------------------------------
+     */
+
+    function escapeHtml(value) {
+
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    }
+
+
+    /*
+     * ------------------------------------------------------
+     * Format Database Value
+     * ------------------------------------------------------
+     */
+
+    function formatValue(value) {
+
+      if (
+        value === null ||
+        value === undefined ||
+        value === ""
+      ) {
+
+        return `
+          <span class="null-value">
+            NULL
+          </span>
+        `;
+
+      }
+
+      return escapeHtml(value);
+
+    }
+
+
+    /*
+     * ------------------------------------------------------
+     * Load Table
+     * ------------------------------------------------------
+     */
+
+    async function loadTable() {
+
+      const table =
+        tableSelect.value;
+
+
+      /*
+       * Reset search
+       */
+
+      searchInput.value = "";
+
+
+      /*
+       * Reset page
+       */
+
+      currentPage = 1;
+
+
+      /*
+       * Loading message
+       */
+
+      tableContainer.innerHTML = `
+        <div class="loading">
+          Loading ${escapeHtml(table)}...
+        </div>
+      `;
+
+
+      /*
+       * Clear messages
+       */
+
+      errorMessage.innerHTML = "";
+
+
+      try {
+
+        /*
+         * Request database records
+         */
+
+        const data =
+          await apiRequest(
+            `/admin/database/${table}`
+          );
+
+
+        /*
+         * Store records
+         */
+
+        currentRows =
+          Array.isArray(data.rows)
+            ? data.rows
+            : [];
+
+
+        /*
+         * Render records
+         */
+
+        renderCurrentPage();
+
+
+      } catch (err) {
+
+        console.error(
+          "Database viewer error:",
+          err
+        );
+
+
+        recordCount.textContent = "";
+
+        paginationContainer.innerHTML = "";
+
+        paginationInfo.textContent = "";
+
+
+        errorMessage.innerHTML = `
+          <div
+            class="form-error"
+            style="
+              display:block;
+              margin-bottom:15px;
+            "
+          >
+            ${escapeHtml(
+              err.message ||
+              "Unable to load database records."
+            )}
+          </div>
+        `;
+
+
+        tableContainer.innerHTML = "";
+
+      }
+
+    }
+
+
+    /*
+     * ------------------------------------------------------
+     * Render Current Page
+     * ------------------------------------------------------
+     */
+
+    function renderCurrentPage() {
+
+      /*
+       * No records
+       */
+
+      if (!currentRows.length) {
+
+        tableContainer.innerHTML = `
+          <div class="no-results">
+            No records found.
+          </div>
+        `;
+
+        recordCount.textContent =
+          "0 records";
+
+        paginationContainer.innerHTML = "";
+
+        paginationInfo.textContent = "";
+
+        return;
+
+      }
+
+
+      /*
+       * Calculate total pages
+       */
+
+      const totalPages =
+        Math.ceil(
+          currentRows.length /
+          rowsPerPage
+        );
+
+
+      /*
+       * Make sure current page is valid
+       */
+
+      if (currentPage > totalPages) {
+
+        currentPage = totalPages;
+
+      }
+
+
+      /*
+       * Calculate start/end indexes
+       */
+
+      const startIndex =
+        (currentPage - 1) *
+        rowsPerPage;
+
+      const endIndex =
+        startIndex +
+        rowsPerPage;
+
+
+      /*
+       * Get records for current page
+       */
+
+      const pageRows =
+        currentRows.slice(
+          startIndex,
+          endIndex
+        );
+
+
+      /*
+       * Render table
+       */
+
+      renderTable(pageRows);
+
+
+      /*
+       * Record count
+       */
+
+      recordCount.textContent =
+        `${currentRows.length} record${
+          currentRows.length === 1
+            ? ""
+            : "s"
+        }`;
+
+
+      /*
+       * Pagination
+       */
+
+      renderPagination(
+        totalPages
+      );
+
+
+      /*
+       * Pagination information
+       */
+
+      const displayStart =
+        startIndex + 1;
+
+      const displayEnd =
+        Math.min(
+          endIndex,
+          currentRows.length
+        );
+
+
+      paginationInfo.textContent =
+        `Showing ${displayStart}–${displayEnd} of ${currentRows.length} records`;
+
+    }
+
+
+    /*
+     * ------------------------------------------------------
+     * Render Table
+     * ------------------------------------------------------
+     */
+
+    function renderTable(rows) {
+
+      if (!rows.length) {
+
+        tableContainer.innerHTML = `
+          <div class="no-results">
+            No records found.
+          </div>
+        `;
+
+        return;
+
+      }
+
+
+      /*
+       * Get columns
+       */
+
+      const columns =
+        Object.keys(rows[0]);
+
+
+      /*
+       * Table Header
+       */
+
+      let html = `
+        <table class="database-table">
+
+          <thead>
+
+            <tr>
+
+              ${columns.map(column => `
+                <th>
+                  ${escapeHtml(column)}
+                </th>
+              `).join("")}
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+      `;
+
+
+      /*
+       * Table Rows
+       */
+
+      rows.forEach(row => {
+
+        html += `
+          <tr>
+        `;
+
+
+        columns.forEach(column => {
+
+          html += `
+            <td>
+              ${formatValue(
+                row[column]
+              )}
+            </td>
+          `;
+
+        });
+
+
+        html += `
+          </tr>
+        `;
+
+      });
+
+
+      /*
+       * Close Table
+       */
+
+      html += `
+          </tbody>
+
+        </table>
+      `;
+
+
+      /*
+       * Display Table
+       */
+
+      tableContainer.innerHTML =
+        html;
+
+    }
+
+
+    /*
+     * ------------------------------------------------------
+     * Render Pagination
+     * ------------------------------------------------------
+     */
+
+    function renderPagination(totalPages) {
+
+      paginationContainer.innerHTML = "";
+
+
+      /*
+       * No need for pagination
+       */
+
+      if (totalPages <= 1) {
+
+        return;
+
+      }
+
+
+      /*
+       * Previous Button
+       */
+
+      const previousBtn =
+        document.createElement("button");
+
+      previousBtn.className =
+        "pagination-btn";
+
+      previousBtn.textContent =
+        "← Previous";
+
+      previousBtn.disabled =
+        currentPage === 1;
+
+
+      previousBtn.addEventListener(
+        "click",
+        function () {
+
+          if (currentPage > 1) {
+
+            currentPage--;
+
+            renderCurrentPage();
+
+          }
+
+        }
+      );
+
+
+      paginationContainer.appendChild(
+        previousBtn
+      );
+
+
+      /*
+       * Page Number Buttons
+       */
+
+      for (
+        let page = 1;
+        page <= totalPages;
+        page++
+      ) {
+
+        const pageBtn =
+          document.createElement("button");
+
+
+        pageBtn.className =
+          "pagination-btn";
+
+
+        pageBtn.textContent =
+          page;
+
+
+        /*
+         * Active page
+         */
+
+        if (page === currentPage) {
+
+          pageBtn.classList.add(
+            "active"
+          );
+
+        }
+
+
+        /*
+         * Click page
+         */
+
+        pageBtn.addEventListener(
+          "click",
+          function () {
+
+            currentPage =
+              page;
+
+            renderCurrentPage();
+
+          }
+        );
+
+
+        paginationContainer.appendChild(
+          pageBtn
+        );
+
+      }
+
+
+      /*
+       * Next Button
+       */
+
+      const nextBtn =
+        document.createElement("button");
+
+
+      nextBtn.className =
+        "pagination-btn";
+
+
+      nextBtn.textContent =
+        "Next →";
+
+
+      nextBtn.disabled =
+        currentPage === totalPages;
+
+
+      nextBtn.addEventListener(
+        "click",
+        function () {
+
+          if (
+            currentPage <
+            totalPages
+          ) {
+
+            currentPage++;
+
+            renderCurrentPage();
+
+          }
+
+        }
+      );
+
+
+      paginationContainer.appendChild(
+        nextBtn
+      );
+
+    }
+
+
+    /*
+     * ------------------------------------------------------
+     * Search
+     * ------------------------------------------------------
+     */
+
+    searchInput.addEventListener(
+      "input",
+      function () {
+
+        const searchText =
+          this.value
+            .toLowerCase()
+            .trim();
+
+
+        /*
+         * Empty search
+         */
+
+        if (!searchText) {
+
+          currentPage = 1;
+
+          renderCurrentPage();
+
+          return;
+
+        }
+
+
+        /*
+         * Filter records
+         */
+
+        const filteredRows =
+          currentRows.filter(row => {
+
+            return Object.values(row)
+              .some(value => {
+
+                return String(
+                  value ?? ""
+                )
+                  .toLowerCase()
+                  .includes(searchText);
+
+              });
+
+          });
+
+
+        /*
+         * IMPORTANT:
+         *
+         * We temporarily display
+         * the filtered records.
+         *
+         */
+
+        window.filteredDatabaseRows =
+          filteredRows;
+
+        currentPage = 1;
+
+
+        /*
+         * Render filtered data
+         */
+
+        renderFilteredResults(
+          filteredRows
+        );
+
+      }
+    );
+
+
+    /*
+     * ------------------------------------------------------
+     * Render Search Results
+     * ------------------------------------------------------
+     */
+
+    function renderFilteredResults(
+      filteredRows
+    ) {
+
+      /*
+       * No search results
+       */
+
+      if (!filteredRows.length) {
+
+        tableContainer.innerHTML = `
+          <div class="no-results">
+            No matching records found.
+          </div>
+        `;
+
+        recordCount.textContent =
+          "0 matching records";
+
+        paginationContainer.innerHTML = "";
+
+        paginationInfo.textContent = "";
+
+        return;
+
+      }
+
+
+      /*
+       * Number of pages
+       */
+
+      const totalPages =
+        Math.ceil(
+          filteredRows.length /
+          rowsPerPage
+        );
+
+
+      /*
+       * Ensure valid page
+       */
+
+      if (
+        currentPage >
+        totalPages
+      ) {
+
+        currentPage =
+          totalPages;
+
+      }
+
+
+      /*
+       * Start/end
+       */
+
+      const startIndex =
+        (currentPage - 1) *
+        rowsPerPage;
+
+
+      const endIndex =
+        startIndex +
+        rowsPerPage;
+
+
+      /*
+       * Current page rows
+       */
+
+      const pageRows =
+        filteredRows.slice(
+          startIndex,
+          endIndex
+        );
+
+
+      /*
+       * Render
+       */
+
+      renderTable(
+        pageRows
+      );
+
+
+      /*
+       * Count
+       */
+
+      recordCount.textContent =
+        `${filteredRows.length} matching record${
+          filteredRows.length === 1
+            ? ""
+            : "s"
+        }`;
+
+
+      /*
+       * Pagination
+       */
+
+      renderPagination(
+        totalPages,
+        true
+      );
+
+
+      /*
+       * Info
+
+       */
+
+      const displayStart =
+        startIndex + 1;
+
+
+      const displayEnd =
+        Math.min(
+          endIndex,
+          filteredRows.length
+        );
+
+
+      paginationInfo.textContent =
+        `Showing ${displayStart}–${displayEnd} of ${filteredRows.length} matching records`;
+
+    }
+
+
+    /*
+     * ------------------------------------------------------
+     * Modified Pagination for Search
+     * ------------------------------------------------------
+     */
+
+    function renderPagination(
+      totalPages,
+      isSearch = false
+    ) {
+
+      paginationContainer.innerHTML = "";
+
+
+      if (totalPages <= 1) {
+
+        return;
+
+      }
+
+
+      /*
+       * Previous
+       */
+
+      const previousBtn =
+        document.createElement("button");
+
+      previousBtn.className =
+        "pagination-btn";
+
+      previousBtn.textContent =
+        "← Previous";
+
+      previousBtn.disabled =
+        currentPage === 1;
+
+
+      previousBtn.addEventListener(
+        "click",
+        function () {
+
+          if (currentPage > 1) {
+
+            currentPage--;
+
+            if (isSearch) {
+
+              renderFilteredResults(
+                window.filteredDatabaseRows
+              );
+
+            } else {
+
+              renderCurrentPage();
+
+            }
+
+          }
+
+        }
+      );
+
+
+      paginationContainer.appendChild(
+        previousBtn
+      );
+
+
+      /*
+       * Page numbers
+       */
+
+      for (
+        let page = 1;
+        page <= totalPages;
+        page++
+      ) {
+
+        const pageBtn =
+          document.createElement("button");
+
+
+        pageBtn.className =
+          "pagination-btn";
+
+
+        pageBtn.textContent =
+          page;
+
+
+        if (
+          page === currentPage
+        ) {
+
+          pageBtn.classList.add(
+            "active"
+          );
+
+        }
+
+
+        pageBtn.addEventListener(
+          "click",
+          function () {
+
+            currentPage =
+              page;
+
+
+            if (isSearch) {
+
+              renderFilteredResults(
+                window.filteredDatabaseRows
+              );
+
+            } else {
+
+              renderCurrentPage();
+
+            }
+
+          }
+        );
+
+
+        paginationContainer.appendChild(
+          pageBtn
+        );
+
+      }
+
+
+      /*
+       * Next
+       */
+
+      const nextBtn =
+        document.createElement("button");
+
+
+      nextBtn.className =
+        "pagination-btn";
+
+
+      nextBtn.textContent =
+        "Next →";
+
+
+      nextBtn.disabled =
+        currentPage === totalPages;
+
+
+      nextBtn.addEventListener(
+        "click",
+        function () {
+
+          if (
+            currentPage <
+            totalPages
+          ) {
+
+            currentPage++;
+
+
+            if (isSearch) {
+
+              renderFilteredResults(
+                window.filteredDatabaseRows
+              );
+
+            } else {
+
+              renderCurrentPage();
+
+            }
+
+          }
+
+        }
+      );
+
+
+      paginationContainer.appendChild(
+        nextBtn
+      );
+
+    }
+
+
+    /*
+     * ------------------------------------------------------
+     * Table Change
+     * ------------------------------------------------------
+     */
+
+    tableSelect.addEventListener(
+      "change",
+      loadTable
+    );
+
+
+    /*
+     * ------------------------------------------------------
+     * Refresh
+     * ------------------------------------------------------
+     */
+
+    refreshBtn.addEventListener(
+      "click",
+      loadTable
+    );
+
+
+    /*
+     * ------------------------------------------------------
+     * Initial Load
+     * ------------------------------------------------------
+     */
+
+    loadTable();
+
+  </script>
+
+</body>
+</html>

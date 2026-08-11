@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report a Water Issue — AquaTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="topbar" id="topbar"></header>
+
+<div class="shell" style="max-width:720px;">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">Citizen Portal</div>
+      <h2>Report a Water Issue</h2>
+      <p>Fill in the details below. The concerned water department will review and act on it.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-error" id="errBox"></div>
+
+    <form id="complaintForm">
+      <div class="field">
+        <label for="complaint_type">Complaint type</label>
+        <select id="complaint_type" required>
+          <option value="">Select a complaint type…</option>
+          <option>Water Leakage</option>
+          <option>Water Overflow</option>
+          <option>Water Contamination</option>
+          <option>Low Water Pressure</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="description">Problem description</label>
+        <textarea id="description" required placeholder="Describe what you're seeing — location landmark, how long it's been happening, severity, etc."></textarea>
+      </div>
+
+      <div class="field">
+        <label>Location</label>
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+          <button type="button" class="btn btn-ghost btn-sm" id="gpsBtn">📍 Use my current location</button>
+          <span class="small muted" id="gpsStatus" style="align-self:center"></span>
+        </div>
+        <input type="text" id="address" placeholder="Address / landmark (you can also type this manually)">
+        <input type="hidden" id="latitude">
+        <input type="hidden" id="longitude">
+        <p class="hint" id="coordHint"></p>
+      </div>
+
+      <div class="field">
+        <label for="image">Upload photo proof (optional)</label>
+        <input type="file" id="image" accept="image/png, image/jpeg, image/webp">
+        <p class="hint">JPG, PNG, or WEBP — up to 5 MB. A clear photo helps staff assess the issue faster.</p>
+        <img id="preview" style="display:none; margin-top:10px; max-height:180px; border-radius:8px; border:1px solid var(--color-line);">
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Submit Complaint</button>
+    </form>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  Session.requireRole("citizen");
+  renderTopbar("topbar", { role: "citizen" });
+
+  const gpsBtn = document.getElementById("gpsBtn");
+  const gpsStatus = document.getElementById("gpsStatus");
+  const coordHint = document.getElementById("coordHint");
+
+  gpsBtn.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      gpsStatus.textContent = "Geolocation is not supported by this browser.";
+      return;
+    }
+    gpsStatus.textContent = "Fetching location…";
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        document.getElementById("latitude").value = pos.coords.latitude;
+        document.getElementById("longitude").value = pos.coords.longitude;
+        coordHint.textContent = `Captured: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+        gpsStatus.textContent = "Location captured ✓";
+      },
+      (err) => {
+        gpsStatus.textContent = "Could not fetch location — please enter the address manually.";
+      }
+    );
+  });
+
+  document.getElementById("image").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    const preview = document.getElementById("preview");
+    if (file) {
+      preview.src = URL.createObjectURL(file);
+      preview.style.display = "block";
+    } else {
+      preview.style.display = "none";
+    }
+  });
+
+  const form = document.getElementById("complaintForm");
+  const errBox = document.getElementById("errBox");
+  const submitBtn = document.getElementById("submitBtn");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errBox.style.display = "none";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting…";
+
+    const fd = new FormData();
+    fd.append("complaint_type", document.getElementById("complaint_type").value);
+    fd.append("description", document.getElementById("description").value.trim());
+    fd.append("address", document.getElementById("address").value.trim());
+    fd.append("latitude", document.getElementById("latitude").value);
+    fd.append("longitude", document.getElementById("longitude").value);
+    const imageFile = document.getElementById("image").files[0];
+    if (imageFile) fd.append("image", imageFile);
+
+    try {
+      const data = await apiRequest("/complaints", { method: "POST", body: fd, isForm: true });
+      window.location.href = `/pages/complaint-detail.html?id=${data.complaint_id}&justSubmitted=1`;
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.style.display = "block";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Complaint";
+    }
+  });
+</script>
+</body>
+</html>

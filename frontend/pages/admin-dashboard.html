@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — AquaTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="topbar" id="topbar"></header>
+
+<div class="shell">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">Department Overview</div>
+      <h2>Admin Dashboard</h2>
+      <p>Live snapshot of citizen complaints across the water supply network.</p>
+    </div>
+    <a class="btn btn-primary" href="/pages/admin-complaints.html">View All Complaints</a>
+  </div>
+
+  <div class="stat-grid" id="statGrid">
+    <div class="stat-card total"><div class="num">—</div><div class="label">Total Complaints</div></div>
+    <div class="stat-card pending"><div class="num">—</div><div class="label">Submitted / Pending</div></div>
+    <div class="stat-card progress"><div class="num">—</div><div class="label">In Progress</div></div>
+    <div class="stat-card resolved"><div class="num">—</div><div class="label">Resolved</div></div>
+    <div class="stat-card closed"><div class="num">—</div><div class="label">Closed</div></div>
+  </div>
+
+  <div class="card">
+    <h4>Complaints by type</h4>
+    <div id="typeBreakdown" class="mt-16"></div>
+  </div>
+
+  <div class="card mt-16">
+    <h4>Recently reported</h4>
+    <div id="recentList" class="mt-16"></div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  Session.requireRole("admin");
+  renderTopbar("topbar", { role: "admin" });
+
+  const TYPE_ICONS = {
+    "Water Leakage": "💧",
+    "Water Overflow": "🌊",
+    "Water Contamination": "⚠️",
+    "Low Water Pressure": "📉",
+  };
+
+  async function load() {
+    try {
+      const stats = await apiRequest("/admin/stats");
+      const cards = document.querySelectorAll("#statGrid .stat-card .num");
+      cards[0].textContent = stats.total;
+      cards[1].textContent = stats.byStatus["Submitted"] || 0;
+      cards[2].textContent = (stats.byStatus["Assigned"] || 0) + (stats.byStatus["In Progress"] || 0);
+      cards[3].textContent = stats.byStatus["Resolved"] || 0;
+      cards[4].textContent = stats.byStatus["Closed"] || 0;
+
+      const typeWrap = document.getElementById("typeBreakdown");
+      const types = ["Water Leakage", "Water Overflow", "Water Contamination", "Low Water Pressure"];
+      const maxCount = Math.max(1, ...types.map(t => stats.byType[t] || 0));
+      typeWrap.innerHTML = types.map(t => {
+        const count = stats.byType[t] || 0;
+        const pct = Math.round((count / maxCount) * 100);
+        return `
+          <div style="margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:5px;">
+              <span>${TYPE_ICONS[t]} ${t}</span><strong>${count}</strong>
+            </div>
+            <div style="background:#EEF3F4; border-radius:6px; height:8px; overflow:hidden;">
+              <div style="width:${pct}%; background:var(--color-teal); height:100%;"></div>
+            </div>
+          </div>`;
+      }).join("");
+
+      const recent = await apiRequest("/admin/complaints");
+      const recentList = document.getElementById("recentList");
+      const top = recent.slice(0, 6);
+      if (!top.length) {
+        recentList.innerHTML = `<p class="muted">No complaints have been reported yet.</p>`;
+      } else {
+        recentList.innerHTML = top.map(c => `
+          <a class="complaint-card" href="/pages/complaint-detail.html?id=${c.id}">
+            ${c.image_path ? `<img class="thumb" src="${c.image_path}" alt="">` : `<div class="thumb placeholder">💧</div>`}
+            <div class="body">
+              <h4>${escapeHtml(c.complaint_type)} <span class="muted small">#AQT-${String(c.id).padStart(4,'0')}</span></h4>
+              <p>${escapeHtml(c.citizen_name || "Citizen")} — ${escapeHtml(c.description)}</p>
+            </div>
+            <div class="meta">
+              <span class="badge ${statusBadgeClass(c.status)}">${c.status}</span>
+              <span class="date">${formatDate(c.created_at)}</span>
+            </div>
+          </a>`).join("");
+      }
+    } catch (err) {
+      document.getElementById("recentList").innerHTML = `<div class="form-error" style="display:block">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>

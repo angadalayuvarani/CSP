@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Complaints — AquaTrack Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="topbar" id="topbar"></header>
+
+<div class="shell">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">Department Overview</div>
+      <h2>All Complaints</h2>
+      <p>Filter, review, and manage every complaint reported by citizens.</p>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <select id="filterType">
+      <option value="">All types</option>
+      <option>Water Leakage</option>
+      <option>Water Overflow</option>
+      <option>Water Contamination</option>
+      <option>Low Water Pressure</option>
+    </select>
+    <select id="filterStatus">
+      <option value="">All statuses</option>
+      <option>Submitted</option>
+      <option>Assigned</option>
+      <option>In Progress</option>
+      <option>Resolved</option>
+      <option>Closed</option>
+    </select>
+    <input type="text" id="filterSearch" placeholder="Search by citizen, description, address…">
+    <button class="btn btn-ghost btn-sm" id="clearBtn">Clear filters</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Type</th><th>Citizen</th><th>Reported</th><th>Assigned to</th><th>Status</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="7" class="muted">Loading complaints…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  Session.requireRole("admin");
+  renderTopbar("topbar", { role: "admin" });
+
+  const typeSel = document.getElementById("filterType");
+  const statusSel = document.getElementById("filterStatus");
+  const searchInput = document.getElementById("filterSearch");
+  let debounceTimer;
+
+  async function load() {
+    const tbody = document.getElementById("tableBody");
+    const qs = new URLSearchParams();
+    if (typeSel.value) qs.set("type", typeSel.value);
+    if (statusSel.value) qs.set("status", statusSel.value);
+    if (searchInput.value.trim()) qs.set("search", searchInput.value.trim());
+
+    try {
+      const complaints = await apiRequest(`/admin/complaints?${qs.toString()}`);
+      if (!complaints.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="muted">No complaints match these filters.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = complaints.map(c => `
+        <tr>
+          <td>#AQT-${String(c.id).padStart(4,'0')}</td>
+          <td><span class="type-tag">${escapeHtml(c.complaint_type)}</span></td>
+          <td>${escapeHtml(c.citizen_name || "—")}</td>
+          <td class="small">${formatDate(c.created_at)}</td>
+          <td>${c.staff_name ? escapeHtml(c.staff_name) : '<span class="muted small">Unassigned</span>'}</td>
+          <td><span class="badge ${statusBadgeClass(c.status)}">${c.status}</span></td>
+          <td><a class="btn btn-ghost btn-sm" href="/pages/complaint-detail.html?id=${c.id}">Manage →</a></td>
+        </tr>
+      `).join("");
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="form-error" style="display:block">${escapeHtml(err.message)}</div></td></tr>`;
+    }
+  }
+
+  typeSel.addEventListener("change", load);
+  statusSel.addEventListener("change", load);
+  searchInput.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(load, 350);
+  });
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    typeSel.value = ""; statusSel.value = ""; searchInput.value = "";
+    load();
+  });
+
+  load();
+</script>
+</body>
+</html>

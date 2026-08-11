@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AquaTrack — Digital Water Complaint Management Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="/index.html"><span class="drop"></span> AquaTrack</a>
+  <nav>
+    <a href="/pages/admin-login.html"><span class="txt">Department Login</span></a>
+    <a href="/pages/login.html" id="navLogin">Citizen Login</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <h1>Report water problems.<br>Track them until they're fixed.</h1>
+      <p class="lead">AquaTrack is the digital complaint desk for your local Water Department, Municipal Corporation, or Panchayat water supply — for leakage, overflow, contamination, and low pressure issues.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/pages/register.html">Report a Water Issue</a>
+        <a class="btn btn-ghost" style="color:#fff;border-color:rgba(255,255,255,.4)" href="/pages/login.html">Track My Complaint</a>
+      </div>
+    </div>
+    <div class="hero-panel">
+      <div class="step">
+        <div class="n">1</div>
+        <div><h4>Submit the complaint</h4><p>Pick a type, describe it, add a photo and location.</p></div>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <div><h4>Department reviews &amp; assigns</h4><p>Staff is assigned to inspect and resolve the issue.</p></div>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <div><h4>Work is carried out</h4><p>Field staff resolve the issue on site.</p></div>
+      </div>
+      <div class="step">
+        <div class="n">4</div>
+        <div><h4>Track until closed</h4><p>Follow status updates in real time, right here.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="status-strip">
+  <div class="status-strip-inner">
+    <div>
+      <div class="eyebrow">Complaint lifecycle</div>
+      <div class="muted small">Every complaint moves through these five stages.</div>
+    </div>
+    <div class="status-chain">
+      <span class="badge badge-submitted">Submitted</span><span class="arrow">→</span>
+      <span class="badge badge-assigned">Assigned</span><span class="arrow">→</span>
+      <span class="badge badge-inprogress">In Progress</span><span class="arrow">→</span>
+      <span class="badge badge-resolved">Resolved</span><span class="arrow">→</span>
+      <span class="badge badge-closed">Closed</span>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="feature-card">
+    <div class="icon">💧</div>
+    <h4>Water Leakage</h4>
+    <p>Report pipe bursts, leaking joints, or road-side leaks near you.</p>
+  </div>
+  <div class="feature-card">
+    <div class="icon">🌊</div>
+    <h4>Water Overflow</h4>
+    <p>Overflowing tanks, chambers, or supply lines flooding an area.</p>
+  </div>
+  <div class="feature-card">
+    <div class="icon">⚠️</div>
+    <h4>Water Contamination</h4>
+    <p>Discoloured, foul-smelling, or unsafe drinking water supply.</p>
+  </div>
+  <div class="feature-card">
+    <div class="icon">📉</div>
+    <h4>Low Water Pressure</h4>
+    <p>Insufficient supply pressure affecting your home or locality.</p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  AquaTrack — Digital Water Complaint Management Portal · A citizen-to-department service delivery project
+</footer>
+
+<script src="/js/api.js"></script>
+<script>
+  if (Session.isLoggedIn()) {
+    const user = Session.getUser();
+    document.getElementById("navLogin").textContent = "Go to My Dashboard";
+    document.getElementById("navLogin").href = "/pages/citizen-dashboard.html";
+  }
+</script>
+</body>
+</html>
