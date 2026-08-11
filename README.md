@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AquaTrack — Digital Water Complaint Management Portal
 
 A full-stack web application that lets citizens digitally report water-related
@@ -234,3 +235,6 @@ All protected routes require `Authorization: Bearer <token>`.
 
 Sample field staff (Ravi Kumar, Sunita Reddy, Manohar Rao, Lakshmi Devi) are
 also seeded so you can demo the "assign to staff" feature immediately.
+=======
+# CSP
+>>>>>>> bcab41cedae1dab8fc01e5c513d236e8908ed929
