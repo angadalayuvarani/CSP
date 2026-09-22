@@ -5,11 +5,9 @@ const router = express.Router();
 const { authenticate, requireRole } = require("../middleware/auth");
 const upload = require("../middleware/upload");
 
-require("../models/Staff");
-
-const Complaint = require("../models/Complaint");
+const Staff = require("../models/staff");
+const Complaint = require("../models/complaint");
 const ComplaintStatusHistory = require("../models/ComplaintStatusHistory");
-
 const VALID_TYPES = [
   "Water Leakage",
   "Water Overflow",
