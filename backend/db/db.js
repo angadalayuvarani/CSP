@@ -1,6 +1,7 @@
 require("dotenv").config();
 const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
+const bcrypt = require("bcryptjs");
 
 const DB_PATH = path.join(__dirname, "aquatrack.sqlite");
 
@@ -23,12 +24,37 @@ db.serialize(() => {
       email TEXT UNIQUE NOT NULL,
       phone TEXT,
       password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'citizen' CHECK(role IN ('citizen', 'admin')),
+      role TEXT NOT NULL DEFAULT 'citizen'
+        CHECK(role IN ('citizen', 'admin')),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Staff table: water department field staff that complaints get assigned to
+  // Create default department/admin account
+  const adminPasswordHash = bcrypt.hashSync("Admin@123", 10);
+
+  db.run(
+    `INSERT OR IGNORE INTO users
+      (name, email, phone, password_hash, role)
+     VALUES (?, ?, ?, ?, 'admin')`,
+    [
+      "Portal Administrator",
+      "admin@aquatrack.gov.in",
+      "9999999999",
+      adminPasswordHash
+    ],
+    (err) => {
+      if (err) {
+        console.error("Could not create default admin:", err.message);
+      } else {
+        console.log(
+          "Default admin checked: admin@aquatrack.gov.in"
+        );
+      }
+    }
+  );
+
+  // Staff table: water department field staff
   db.run(`
     CREATE TABLE IF NOT EXISTS staff (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,7 +89,7 @@ db.serialize(() => {
     )
   `);
 
-  // Complaint status history: audit trail of every status change
+  // Complaint status history: audit trail
   db.run(`
     CREATE TABLE IF NOT EXISTS complaint_status_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
