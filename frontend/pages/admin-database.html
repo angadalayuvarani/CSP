@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -95,8 +96,6 @@
       color: #777;
     }
 
-    /* Pagination */
-
     .pagination-container {
       display: flex;
       justify-content: center;
@@ -140,6 +139,62 @@
       font-size: 0.85rem;
     }
 
+    /* Add Staff */
+
+    .add-staff-box {
+      display: none;
+      width: 100%;
+      margin-top: 10px;
+      margin-bottom: 20px;
+      padding: 20px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+    }
+
+    .add-staff-box h4 {
+      margin: 0 0 16px;
+      font-size: 1rem;
+    }
+
+    .staff-form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .staff-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 11px 14px;
+      border: 1px solid #dfe5e7;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      background: white;
+    }
+
+    .staff-input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .staff-form-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .staff-message {
+      margin-top: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .staff-form-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
     @media (max-width: 768px) {
 
       .database-toolbar {
@@ -158,163 +213,219 @@
       }
 
     }
+
+    @media (max-width: 600px) {
+      .staff-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
+
 </head>
 
 <body>
 
-  <!-- Existing AquaTrack Topbar -->
   <header class="topbar" id="topbar"></header>
 
   <div class="shell">
 
-    <!-- Page Header -->
-    <div class="page-head">
+```
+<div class="page-head">
 
-      <div>
+  <div>
 
-        <div class="eyebrow">
-          Administration
-        </div>
-
-        <h2>
-          Database Viewer
-        </h2>
-
-        <p>
-          View the data currently stored in the AquaTrack SQLite database.
-        </p>
-
-      </div>
-
+    <div class="eyebrow">
+      Administration
     </div>
 
+    <h2>
+      Database Viewer
+    </h2>
 
-    <!-- Toolbar -->
-    <div class="database-toolbar">
+    <p>
+      View the data currently stored in the AquaTrack MongoDB database.
+    </p>
 
-      <!-- Table Selection -->
-      <select id="tableSelect">
+  </div>
 
-        <option value="users">
-          Users
-        </option>
-
-        <option value="staff">
-          Staff
-        </option>
-
-        <option value="complaints">
-          Complaints
-        </option>
-
-        <option value="complaint_status_history">
-          Complaint Status History
-        </option>
-
-      </select>
+</div>
 
 
-      <!-- Search -->
-      <input
-        type="text"
-        id="searchInput"
-        class="database-search"
-        placeholder="🔍 Search records..."
-        autocomplete="off"
-      >
+<!-- Toolbar -->
+
+<div class="database-toolbar">
+
+  <select id="tableSelect">
+
+    <option value="users">
+      Users
+    </option>
+
+    <option value="staff">
+      Staff
+    </option>
+
+    <option value="complaints">
+      Complaints
+    </option>
+
+    <option value="complaint_status_history">
+      Complaint Status History
+    </option>
+
+  </select>
 
 
-      <!-- Refresh -->
-      <button
-        class="btn btn-primary"
-        id="refreshBtn"
-      >
-        Refresh
-      </button>
+  <input
+    type="text"
+    id="searchInput"
+    class="database-search"
+    placeholder="🔍 Search records..."
+    autocomplete="off"
+  >
 
 
-      <!-- Record Count -->
-      <span
-        class="record-count"
-        id="recordCount"
-      ></span>
-
-    </div>
-
-
-    <!-- Error -->
-    <div id="errorMessage"></div>
+  <button
+    class="btn btn-primary"
+    id="refreshBtn"
+  >
+    Refresh
+  </button>
 
 
-    <!-- Database Table -->
-    <div class="database-table-wrap">
+  <span
+    class="record-count"
+    id="recordCount"
+  ></span>
 
-      <div id="tableContainer">
-
-        <div class="loading">
-          Select a table to view its data.
-        </div>
-
-      </div>
-
-    </div>
+</div>
 
 
-    <!-- Pagination -->
-    <div
-      class="pagination-container"
-      id="paginationContainer"
-    ></div>
+<!-- Add Staff Form -->
 
+<div
+  class="add-staff-box"
+  id="addStaffBox"
+>
 
-    <!-- Pagination Information -->
-    <div
-      class="pagination-info"
-      id="paginationInfo"
-    ></div>
+  <h4>
+    Add Field Staff
+  </h4>
+
+  <div class="staff-form-grid">
+
+    <input
+      type="text"
+      id="staffName"
+      class="staff-input"
+      placeholder="Staff name"
+    >
+
+    <input
+      type="text"
+      id="staffPhone"
+      class="staff-input"
+      placeholder="Phone"
+    >
+
+    <input
+      type="text"
+      id="staffDesignation"
+      class="staff-input"
+      placeholder="Designation"
+    >
+
+    <input
+      type="text"
+      id="staffZone"
+      class="staff-input"
+      placeholder="Zone"
+    >
 
   </div>
 
 
-  <!-- Existing API -->
-  <script src="/js/api.js"></script>
+  <div class="staff-form-actions">
 
+    <button
+      class="btn btn-primary"
+      id="addStaffBtn"
+    >
+      Add Staff
+    </button>
+
+    <button
+      class="btn btn-ghost"
+      id="cancelStaffBtn"
+    >
+      Cancel
+    </button>
+
+  </div>
+
+
+  <div
+    id="staffMessage"
+    class="staff-message"
+  ></div>
+
+</div>
+
+
+<!-- Error -->
+
+<div id="errorMessage"></div>
+
+
+<!-- Database Table -->
+
+<div class="database-table-wrap">
+
+  <div id="tableContainer">
+
+    <div class="loading">
+      Select a table to view its data.
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- Pagination -->
+
+<div
+  class="pagination-container"
+  id="paginationContainer"
+></div>
+
+
+<div
+  class="pagination-info"
+  id="paginationInfo"
+></div>
+```
+
+  </div>
+
+  <script src="/js/api.js"></script>
 
   <script>
 
-    /*
-     * ======================================================
-     * AquaTrack Database Viewer
-     * ======================================================
-     */
-
-
-    /*
-     * ------------------------------------------------------
-     * Admin Protection
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // Admin Protection
+    // ======================================================
 
     Session.requireRole("admin");
-
-
-    /*
-     * ------------------------------------------------------
-     * Existing Topbar
-     * ------------------------------------------------------
-     */
 
     renderTopbar("topbar", {
       role: "admin"
     });
 
 
-    /*
-     * ------------------------------------------------------
-     * DOM Elements
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // DOM Elements
+    // ======================================================
 
     const tableSelect =
       document.getElementById("tableSelect");
@@ -340,32 +451,37 @@
     const paginationInfo =
       document.getElementById("paginationInfo");
 
+    const addStaffBox =
+      document.getElementById("addStaffBox");
 
-    /*
-     * ------------------------------------------------------
-     * Database Data
-     * ------------------------------------------------------
-     */
+    const addStaffBtn =
+      document.getElementById("addStaffBtn");
+
+    const cancelStaffBtn =
+      document.getElementById("cancelStaffBtn");
+
+    const staffMessage =
+      document.getElementById("staffMessage");
+
+
+    // ======================================================
+    // Database Data
+    // ======================================================
 
     let currentRows = [];
-
-
-    /*
-     * ------------------------------------------------------
-     * Pagination Settings
-     * ------------------------------------------------------
-     */
 
     const rowsPerPage = 10;
 
     let currentPage = 1;
 
+    let isSearchMode = false;
 
-    /*
-     * ------------------------------------------------------
-     * Escape HTML
-     * ------------------------------------------------------
-     */
+    let filteredRows = [];
+
+
+    // ======================================================
+    // Escape HTML
+    // ======================================================
 
     function escapeHtml(value) {
 
@@ -379,11 +495,9 @@
     }
 
 
-    /*
-     * ------------------------------------------------------
-     * Format Database Value
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // Format Database Value
+    // ======================================================
 
     function formatValue(value) {
 
@@ -406,11 +520,9 @@
     }
 
 
-    /*
-     * ------------------------------------------------------
-     * Load Table
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // Load Table
+    // ======================================================
 
     async function loadTable() {
 
@@ -418,23 +530,27 @@
         tableSelect.value;
 
 
-      /*
-       * Reset search
-       */
-
       searchInput.value = "";
-
-
-      /*
-       * Reset page
-       */
 
       currentPage = 1;
 
+      isSearchMode = false;
 
-      /*
-       * Loading message
-       */
+      filteredRows = [];
+
+
+      // Show / hide Add Staff
+
+      if (table === "staff") {
+
+        addStaffBox.style.display = "block";
+
+      } else {
+
+        addStaffBox.style.display = "none";
+
+      }
+
 
       tableContainer.innerHTML = `
         <div class="loading">
@@ -443,18 +559,10 @@
       `;
 
 
-      /*
-       * Clear messages
-       */
-
       errorMessage.innerHTML = "";
 
 
       try {
-
-        /*
-         * Request database records
-         */
 
         const data =
           await apiRequest(
@@ -462,19 +570,11 @@
           );
 
 
-        /*
-         * Store records
-         */
-
         currentRows =
           Array.isArray(data.rows)
             ? data.rows
             : [];
 
-
-        /*
-         * Render records
-         */
 
         renderCurrentPage();
 
@@ -517,17 +617,11 @@
     }
 
 
-    /*
-     * ------------------------------------------------------
-     * Render Current Page
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // Render Current Page
+    // ======================================================
 
     function renderCurrentPage() {
-
-      /*
-       * No records
-       */
 
       if (!currentRows.length) {
 
@@ -549,20 +643,12 @@
       }
 
 
-      /*
-       * Calculate total pages
-       */
-
       const totalPages =
         Math.ceil(
           currentRows.length /
           rowsPerPage
         );
 
-
-      /*
-       * Make sure current page is valid
-       */
 
       if (currentPage > totalPages) {
 
@@ -571,22 +657,15 @@
       }
 
 
-      /*
-       * Calculate start/end indexes
-       */
-
       const startIndex =
         (currentPage - 1) *
         rowsPerPage;
+
 
       const endIndex =
         startIndex +
         rowsPerPage;
 
-
-      /*
-       * Get records for current page
-       */
 
       const pageRows =
         currentRows.slice(
@@ -595,16 +674,8 @@
         );
 
 
-      /*
-       * Render table
-       */
-
       renderTable(pageRows);
 
-
-      /*
-       * Record count
-       */
 
       recordCount.textContent =
         `${currentRows.length} record${
@@ -614,18 +685,8 @@
         }`;
 
 
-      /*
-       * Pagination
-       */
+      renderPagination(totalPages);
 
-      renderPagination(
-        totalPages
-      );
-
-
-      /*
-       * Pagination information
-       */
 
       const displayStart =
         startIndex + 1;
@@ -643,11 +704,9 @@
     }
 
 
-    /*
-     * ------------------------------------------------------
-     * Render Table
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // Render Table
+    // ======================================================
 
     function renderTable(rows) {
 
@@ -664,17 +723,9 @@
       }
 
 
-      /*
-       * Get columns
-       */
-
       const columns =
         Object.keys(rows[0]);
 
-
-      /*
-       * Table Header
-       */
 
       let html = `
         <table class="database-table">
@@ -696,10 +747,6 @@
           <tbody>
       `;
 
-
-      /*
-       * Table Rows
-       */
 
       rows.forEach(row => {
 
@@ -728,10 +775,6 @@
       });
 
 
-      /*
-       * Close Table
-       */
-
       html += `
           </tbody>
 
@@ -739,30 +782,20 @@
       `;
 
 
-      /*
-       * Display Table
-       */
-
       tableContainer.innerHTML =
         html;
 
     }
 
 
-    /*
-     * ------------------------------------------------------
-     * Render Pagination
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // Pagination
+    // ======================================================
 
     function renderPagination(totalPages) {
 
       paginationContainer.innerHTML = "";
 
-
-      /*
-       * No need for pagination
-       */
 
       if (totalPages <= 1) {
 
@@ -770,10 +803,6 @@
 
       }
 
-
-      /*
-       * Previous Button
-       */
 
       const previousBtn =
         document.createElement("button");
@@ -796,7 +825,15 @@
 
             currentPage--;
 
-            renderCurrentPage();
+            if (isSearchMode) {
+
+              renderFilteredResults();
+
+            } else {
+
+              renderCurrentPage();
+
+            }
 
           }
 
@@ -808,10 +845,6 @@
         previousBtn
       );
 
-
-      /*
-       * Page Number Buttons
-       */
 
       for (
         let page = 1;
@@ -831,10 +864,6 @@
           page;
 
 
-        /*
-         * Active page
-         */
-
         if (page === currentPage) {
 
           pageBtn.classList.add(
@@ -844,18 +873,21 @@
         }
 
 
-        /*
-         * Click page
-         */
-
         pageBtn.addEventListener(
           "click",
           function () {
 
-            currentPage =
-              page;
+            currentPage = page;
 
-            renderCurrentPage();
+            if (isSearchMode) {
+
+              renderFilteredResults();
+
+            } else {
+
+              renderCurrentPage();
+
+            }
 
           }
         );
@@ -868,10 +900,6 @@
       }
 
 
-      /*
-       * Next Button
-       */
-
       const nextBtn =
         document.createElement("button");
 
@@ -879,10 +907,8 @@
       nextBtn.className =
         "pagination-btn";
 
-
       nextBtn.textContent =
         "Next →";
-
 
       nextBtn.disabled =
         currentPage === totalPages;
@@ -899,7 +925,15 @@
 
             currentPage++;
 
-            renderCurrentPage();
+            if (isSearchMode) {
+
+              renderFilteredResults();
+
+            } else {
+
+              renderCurrentPage();
+
+            }
 
           }
 
@@ -914,11 +948,9 @@
     }
 
 
-    /*
-     * ------------------------------------------------------
-     * Search
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // Search
+    // ======================================================
 
     searchInput.addEventListener(
       "input",
@@ -930,11 +962,9 @@
             .trim();
 
 
-        /*
-         * Empty search
-         */
-
         if (!searchText) {
+
+          isSearchMode = false;
 
           currentPage = 1;
 
@@ -945,11 +975,7 @@
         }
 
 
-        /*
-         * Filter records
-         */
-
-        const filteredRows =
+        filteredRows =
           currentRows.filter(row => {
 
             return Object.values(row)
@@ -966,45 +992,21 @@
           });
 
 
-        /*
-         * IMPORTANT:
-         *
-         * We temporarily display
-         * the filtered records.
-         *
-         */
-
-        window.filteredDatabaseRows =
-          filteredRows;
+        isSearchMode = true;
 
         currentPage = 1;
 
-
-        /*
-         * Render filtered data
-         */
-
-        renderFilteredResults(
-          filteredRows
-        );
+        renderFilteredResults();
 
       }
     );
 
 
-    /*
-     * ------------------------------------------------------
-     * Render Search Results
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // Render Search Results
+    // ======================================================
 
-    function renderFilteredResults(
-      filteredRows
-    ) {
-
-      /*
-       * No search results
-       */
+    function renderFilteredResults() {
 
       if (!filteredRows.length) {
 
@@ -1026,10 +1028,6 @@
       }
 
 
-      /*
-       * Number of pages
-       */
-
       const totalPages =
         Math.ceil(
           filteredRows.length /
@@ -1037,24 +1035,12 @@
         );
 
 
-      /*
-       * Ensure valid page
-       */
+      if (currentPage > totalPages) {
 
-      if (
-        currentPage >
-        totalPages
-      ) {
-
-        currentPage =
-          totalPages;
+        currentPage = totalPages;
 
       }
 
-
-      /*
-       * Start/end
-       */
 
       const startIndex =
         (currentPage - 1) *
@@ -1066,10 +1052,6 @@
         rowsPerPage;
 
 
-      /*
-       * Current page rows
-       */
-
       const pageRows =
         filteredRows.slice(
           startIndex,
@@ -1077,18 +1059,8 @@
         );
 
 
-      /*
-       * Render
-       */
+      renderTable(pageRows);
 
-      renderTable(
-        pageRows
-      );
-
-
-      /*
-       * Count
-       */
 
       recordCount.textContent =
         `${filteredRows.length} matching record${
@@ -1098,24 +1070,11 @@
         }`;
 
 
-      /*
-       * Pagination
-       */
+      renderPagination(totalPages);
 
-      renderPagination(
-        totalPages,
-        true
-      );
-
-
-      /*
-       * Info
-
-       */
 
       const displayStart =
         startIndex + 1;
-
 
       const displayEnd =
         Math.min(
@@ -1130,201 +1089,9 @@
     }
 
 
-    /*
-     * ------------------------------------------------------
-     * Modified Pagination for Search
-     * ------------------------------------------------------
-     */
-
-    function renderPagination(
-      totalPages,
-      isSearch = false
-    ) {
-
-      paginationContainer.innerHTML = "";
-
-
-      if (totalPages <= 1) {
-
-        return;
-
-      }
-
-
-      /*
-       * Previous
-       */
-
-      const previousBtn =
-        document.createElement("button");
-
-      previousBtn.className =
-        "pagination-btn";
-
-      previousBtn.textContent =
-        "← Previous";
-
-      previousBtn.disabled =
-        currentPage === 1;
-
-
-      previousBtn.addEventListener(
-        "click",
-        function () {
-
-          if (currentPage > 1) {
-
-            currentPage--;
-
-            if (isSearch) {
-
-              renderFilteredResults(
-                window.filteredDatabaseRows
-              );
-
-            } else {
-
-              renderCurrentPage();
-
-            }
-
-          }
-
-        }
-      );
-
-
-      paginationContainer.appendChild(
-        previousBtn
-      );
-
-
-      /*
-       * Page numbers
-       */
-
-      for (
-        let page = 1;
-        page <= totalPages;
-        page++
-      ) {
-
-        const pageBtn =
-          document.createElement("button");
-
-
-        pageBtn.className =
-          "pagination-btn";
-
-
-        pageBtn.textContent =
-          page;
-
-
-        if (
-          page === currentPage
-        ) {
-
-          pageBtn.classList.add(
-            "active"
-          );
-
-        }
-
-
-        pageBtn.addEventListener(
-          "click",
-          function () {
-
-            currentPage =
-              page;
-
-
-            if (isSearch) {
-
-              renderFilteredResults(
-                window.filteredDatabaseRows
-              );
-
-            } else {
-
-              renderCurrentPage();
-
-            }
-
-          }
-        );
-
-
-        paginationContainer.appendChild(
-          pageBtn
-        );
-
-      }
-
-
-      /*
-       * Next
-       */
-
-      const nextBtn =
-        document.createElement("button");
-
-
-      nextBtn.className =
-        "pagination-btn";
-
-
-      nextBtn.textContent =
-        "Next →";
-
-
-      nextBtn.disabled =
-        currentPage === totalPages;
-
-
-      nextBtn.addEventListener(
-        "click",
-        function () {
-
-          if (
-            currentPage <
-            totalPages
-          ) {
-
-            currentPage++;
-
-
-            if (isSearch) {
-
-              renderFilteredResults(
-                window.filteredDatabaseRows
-              );
-
-            } else {
-
-              renderCurrentPage();
-
-            }
-
-          }
-
-        }
-      );
-
-
-      paginationContainer.appendChild(
-        nextBtn
-      );
-
-    }
-
-
-    /*
-     * ------------------------------------------------------
-     * Table Change
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // Table Change
+    // ======================================================
 
     tableSelect.addEventListener(
       "change",
@@ -1332,11 +1099,9 @@
     );
 
 
-    /*
-     * ------------------------------------------------------
-     * Refresh
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // Refresh
+    // ======================================================
 
     refreshBtn.addEventListener(
       "click",
@@ -1344,11 +1109,184 @@
     );
 
 
-    /*
-     * ------------------------------------------------------
-     * Initial Load
-     * ------------------------------------------------------
-     */
+    // ======================================================
+    // Add Staff
+    // ======================================================
+
+    addStaffBtn.addEventListener(
+      "click",
+      async function () {
+
+        const name =
+          document.getElementById(
+            "staffName"
+          ).value.trim();
+
+        const phone =
+          document.getElementById(
+            "staffPhone"
+          ).value.trim();
+
+        const designation =
+          document.getElementById(
+            "staffDesignation"
+          ).value.trim();
+
+        const zone =
+          document.getElementById(
+            "staffZone"
+          ).value.trim();
+
+
+        staffMessage.innerHTML = "";
+
+
+        if (!name) {
+
+          staffMessage.innerHTML = `
+            <div
+              class="form-error"
+              style="display:block;"
+            >
+              Please enter staff name.
+            </div>
+          `;
+
+          return;
+
+        }
+
+
+        try {
+
+          addStaffBtn.disabled = true;
+
+          addStaffBtn.textContent =
+            "Adding...";
+
+
+          await apiRequest(
+            "/admin/staff",
+            {
+              method: "POST",
+
+              body: {
+                name,
+                phone,
+                designation,
+                zone
+              }
+            }
+          );
+
+
+          staffMessage.innerHTML = `
+            <div
+              class="form-success"
+              style="display:block;"
+            >
+              Staff member added successfully.
+            </div>
+          `;
+
+
+          document.getElementById(
+            "staffName"
+          ).value = "";
+
+          document.getElementById(
+            "staffPhone"
+          ).value = "";
+
+          document.getElementById(
+            "staffDesignation"
+          ).value = "";
+
+          document.getElementById(
+            "staffZone"
+          ).value = "";
+
+
+          await loadTable();
+
+
+          setTimeout(
+            function () {
+
+              staffMessage.innerHTML = "";
+
+            },
+            3000
+          );
+
+
+        } catch (err) {
+
+          staffMessage.innerHTML = `
+            <div
+              class="form-error"
+              style="display:block;"
+            >
+              ${escapeHtml(
+                err.message ||
+                "Could not add staff."
+              )}
+            </div>
+          `;
+
+        } finally {
+
+          addStaffBtn.disabled = false;
+
+          addStaffBtn.textContent =
+            "Add Staff";
+
+        }
+
+      }
+    );
+
+
+    // ======================================================
+    // Cancel Add Staff
+    // ======================================================
+
+    cancelStaffBtn.addEventListener(
+      "click",
+      function () {
+
+        document.getElementById(
+          "staffName"
+        ).value = "";
+
+        document.getElementById(
+          "staffPhone"
+        ).value = "";
+
+        document.getElementById(
+          "staffDesignation"
+        ).value = "";
+
+        document.getElementById(
+          "staffZone"
+        ).value = "";
+
+        staffMessage.innerHTML = "";
+
+        addStaffBox.style.display =
+          "none";
+
+        tableSelect.value = "users";
+
+        loadTable();
+
+      }
+    );
+
+
+    // ======================================================
+    // Initial Load
+    // ======================================================
 
     loadTable();
 

@@ -67,9 +67,19 @@ async function apiRequest(path, { method = "GET", body, isForm = false } = {}) {
 
 function formatDate(isoString) {
   if (!isoString) return "—";
-  const d = new Date(isoString.replace(" ", "T") + "Z");
-  return d.toLocaleString(undefined, {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+
+  const d = new Date(isoString);
+
+  if (Number.isNaN(d.getTime())) {
+    return "—";
+  }
+
+  return d.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
   });
 }
 

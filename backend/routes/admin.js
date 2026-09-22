@@ -1,234 +1,518 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../db/db");
+
 const { authenticate, requireRole } = require("../middleware/auth");
 
-const VALID_STATUSES = ["Submitted", "Assigned", "In Progress", "Resolved", "Closed"];
+const User = require("../models/User");
+const Staff = require("../models/Staff");
+const Complaint = require("../models/Complaint");
+const ComplaintStatusHistory = require("../models/ComplaintStatusHistory");
 
-// All routes below require a logged-in admin
+const VALID_STATUSES = [
+  "Submitted",
+  "Assigned",
+  "In Progress",
+  "Resolved",
+  "Closed",
+];
+
+// All admin routes require logged-in admin
 router.use(authenticate, requireRole("admin"));
 
-// GET /api/admin/complaints?type=&status=&search=  -> list all complaints with optional filters
-router.get("/complaints", (req, res) => {
-  const { type, status, search } = req.query;
-  let sql = `
-    SELECT c.*, s.name AS staff_name, u.name AS citizen_name, u.phone AS citizen_phone
-    FROM complaints c
-    LEFT JOIN staff s ON c.assigned_staff_id = s.id
-    LEFT JOIN users u ON c.user_id = u.id
-    WHERE 1 = 1
-  `;
-  const params = [];
 
-  if (type) {
-    sql += " AND c.complaint_type = ?";
-    params.push(type);
-  }
-  if (status) {
-    sql += " AND c.status = ?";
-    params.push(status);
-  }
-  if (search) {
-    sql += " AND (c.description LIKE ? OR u.name LIKE ? OR c.address LIKE ?)";
-    const like = `%${search}%`;
-    params.push(like, like, like);
-  }
+// ======================================================
+// GET /api/admin/complaints
+// List all complaints with filters
+// ======================================================
 
-  sql += " ORDER BY c.created_at DESC";
+router.get("/complaints", async (req, res) => {
+  try {
+    const { type, status, search } = req.query;
 
-  db.all(sql, params, (err, rows) => {
-    if (err) return res.status(500).json({ message: "Could not fetch complaints." });
-    res.json(rows);
-  });
-});
+    const filter = {};
 
-// GET /api/admin/staff -> list of field staff (for assignment dropdown)
-router.get("/staff", (req, res) => {
-  db.all("SELECT * FROM staff ORDER BY name ASC", [], (err, rows) => {
-    if (err) return res.status(500).json({ message: "Could not fetch staff." });
-    res.json(rows);
-  });
-});
-
-// POST /api/admin/staff -> add a new field staff member
-router.post("/staff", (req, res) => {
-  const { name, phone, designation, zone } = req.body;
-  if (!name) return res.status(400).json({ message: "Staff name is required." });
-
-  db.run(
-    "INSERT INTO staff (name, phone, designation, zone) VALUES (?, ?, ?, ?)",
-    [name, phone || null, designation || null, zone || null],
-    function (err) {
-      if (err) return res.status(500).json({ message: "Could not add staff." });
-      res.status(201).json({ message: "Staff member added.", id: this.lastID });
+    if (type) {
+      filter.complaint_type = type;
     }
-  );
-});
 
-// PUT /api/admin/complaints/:id/assign -> assign complaint to a staff member
-router.put("/complaints/:id/assign", (req, res) => {
-  const { staff_id } = req.body;
-  if (!staff_id) return res.status(400).json({ message: "staff_id is required." });
-
-  db.run(
-    `UPDATE complaints SET assigned_staff_id = ?, status = 'Assigned', updated_at = CURRENT_TIMESTAMP
-     WHERE id = ?`,
-    [staff_id, req.params.id],
-    function (err) {
-      if (err) return res.status(500).json({ message: "Could not assign complaint." });
-      if (this.changes === 0) return res.status(404).json({ message: "Complaint not found." });
-
-      db.get("SELECT name FROM staff WHERE id = ?", [staff_id], (err2, staff) => {
-        db.run(
-          `INSERT INTO complaint_status_history (complaint_id, status, remarks, changed_by)
-           VALUES (?, 'Assigned', ?, ?)`,
-          [req.params.id, `Assigned to ${staff ? staff.name : "staff member"}.`, req.user.id]
-        );
-        res.json({ message: "Complaint assigned successfully." });
-      });
+    if (status) {
+      filter.status = status;
     }
-  );
-});
 
-// PUT /api/admin/complaints/:id/status -> update complaint status (In Progress / Resolved / Closed etc.)
-router.put("/complaints/:id/status", (req, res) => {
-  const { status, remarks } = req.body;
-  if (!status || !VALID_STATUSES.includes(status)) {
-    return res.status(400).json({ message: "Please provide a valid status." });
-  }
+    if (search) {
+      const regex = new RegExp(search, "i");
 
-  db.run(
-    `UPDATE complaints SET status = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-    [status, remarks || null, req.params.id],
-    function (err) {
-      if (err) return res.status(500).json({ message: "Could not update status." });
-      if (this.changes === 0) return res.status(404).json({ message: "Complaint not found." });
+      const users = await User.find({
+        $or: [
+          { name: regex },
+          { phone: regex },
+          { email: regex },
+        ],
+      }).select("_id");
 
-      db.run(
-        `INSERT INTO complaint_status_history (complaint_id, status, remarks, changed_by)
-         VALUES (?, ?, ?, ?)`,
-        [req.params.id, status, remarks || null, req.user.id]
-      );
-      res.json({ message: "Complaint status updated." });
+      const userIds = users.map((user) => user._id);
+
+      filter.$or = [
+        { description: regex },
+        { address: regex },
+        { user_id: { $in: userIds } },
+      ];
     }
-  );
-});
 
-// GET /api/admin/stats -> counts for the dashboard
-router.get("/stats", (req, res) => {
-  const stats = {};
-  db.get("SELECT COUNT(*) AS total FROM complaints", [], (err, row) => {
-    stats.total = row ? row.total : 0;
+    const complaints = await Complaint.find(filter)
+      .populate("assigned_staff_id", "name phone designation zone")
+      .populate("user_id", "name phone email")
+      .sort({ createdAt: -1 })
+      .lean();
 
-    db.all(
-      `SELECT status, COUNT(*) AS count FROM complaints GROUP BY status`,
-      [],
-      (err2, rows) => {
-        stats.byStatus = { Submitted: 0, Assigned: 0, "In Progress": 0, Resolved: 0, Closed: 0 };
-        (rows || []).forEach((r) => (stats.byStatus[r.status] = r.count));
+    const result = complaints.map((c) => ({
+      ...c,
 
-        db.all(
-          `SELECT complaint_type, COUNT(*) AS count FROM complaints GROUP BY complaint_type`,
-          [],
-          (err3, rows2) => {
-            stats.byType = {};
-            (rows2 || []).forEach((r) => (stats.byType[r.complaint_type] = r.count));
-            res.json(stats);
-          }
-        );
-      }
-    );
-  });
-});
+      id: c._id.toString(),
 
-module.exports = router;
+      user_id: c.user_id
+        ? c.user_id._id.toString()
+        : null,
 
+      assigned_staff_id: c.assigned_staff_id
+        ? c.assigned_staff_id._id.toString()
+        : null,
 
-// GET /api/admin/database/:table
-// Admin-only database viewer
-router.get("/database/:table", (req, res) => {
-  const { table } = req.params;
+      staff_name: c.assigned_staff_id
+        ? c.assigned_staff_id.name
+        : null,
 
-  const allowedTables = {
-    users: `
-      SELECT
-        id,
-        name,
-        email,
-        phone,
-        role,
-        created_at
-      FROM users
-      ORDER BY id DESC
-    `,
+      staff_phone: c.assigned_staff_id
+        ? c.assigned_staff_id.phone
+        : null,
 
-    staff: `
-      SELECT
-        id,
-        name,
-        phone,
-        designation,
-        zone,
-        created_at
-      FROM staff
-      ORDER BY id DESC
-    `,
+      citizen_name: c.user_id
+        ? c.user_id.name
+        : null,
 
-    complaints: `
-      SELECT
-        c.id,
-        c.user_id,
-        u.name AS citizen_name,
-        c.complaint_type,
-        c.description,
-        c.latitude,
-        c.longitude,
-        c.address,
-        c.status,
-        c.assigned_staff_id,
-        s.name AS assigned_staff,
-        c.remarks,
-        c.created_at,
-        c.updated_at
-      FROM complaints c
-      LEFT JOIN users u ON c.user_id = u.id
-      LEFT JOIN staff s ON c.assigned_staff_id = s.id
-      ORDER BY c.id DESC
-    `,
+      citizen_phone: c.user_id
+        ? c.user_id.phone
+        : null,
 
-    complaint_status_history: `
-      SELECT
-        h.id,
-        h.complaint_id,
-        h.status,
-        h.remarks,
-        h.changed_by,
-        u.name AS changed_by_name,
-        h.changed_at
-      FROM complaint_status_history h
-      LEFT JOIN users u ON h.changed_by = u.id
-      ORDER BY h.id DESC
-    `
-  };
+      citizen_email: c.user_id
+        ? c.user_id.email
+        : null,
 
-  if (!allowedTables[table]) {
-    return res.status(400).json({
-      message: "Invalid table name."
+      created_at: c.createdAt
+        ? c.createdAt.toISOString()
+        : null,
+
+      updated_at: c.updatedAt
+        ? c.updatedAt.toISOString()
+        : null,
+    }));
+
+    res.json(result);
+
+  } catch (error) {
+    console.error("Admin complaints error:", error);
+
+    res.status(500).json({
+      message: "Could not fetch complaints.",
     });
   }
+});
 
-  db.all(allowedTables[table], [], (err, rows) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({
-        message: "Could not fetch database records."
+
+// ======================================================
+// GET /api/admin/staff
+// List all field staff
+// ======================================================
+
+router.get("/staff", async (req, res) => {
+  try {
+    const staff = await Staff.find()
+      .sort({ name: 1 })
+      .lean();
+
+    const result = staff.map((s) => ({
+      ...s,
+      id: s._id.toString(),
+      created_at: s.createdAt
+        ? s.createdAt.toISOString()
+        : null,
+      updated_at: s.updatedAt
+        ? s.updatedAt.toISOString()
+        : null,
+    }));
+
+    res.json(result);
+
+  } catch (error) {
+    console.error("Fetch staff error:", error);
+
+    res.status(500).json({
+      message: "Could not fetch staff.",
+    });
+  }
+});
+
+
+// ======================================================
+// POST /api/admin/staff
+// Add new field staff
+// ======================================================
+
+router.post("/staff", async (req, res) => {
+  try {
+    const {
+      name,
+      phone,
+      designation,
+      zone,
+    } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        message: "Staff name is required.",
+      });
+    }
+
+    const staff = await Staff.create({
+      name: name.trim(),
+      phone: phone || "",
+      designation: designation || "",
+      zone: zone || "",
+    });
+
+    res.status(201).json({
+      message: "Staff member added.",
+      id: staff._id.toString(),
+    });
+
+  } catch (error) {
+    console.error("Add staff error:", error);
+
+    res.status(500).json({
+      message: "Could not add staff.",
+    });
+  }
+});
+
+
+// ======================================================
+// PUT /api/admin/complaints/:id/assign
+// Assign complaint to staff
+// ======================================================
+
+router.put("/complaints/:id/assign", async (req, res) => {
+  try {
+    const { staff_id } = req.body;
+
+    if (!staff_id) {
+      return res.status(400).json({
+        message: "staff_id is required.",
+      });
+    }
+
+    const staff = await Staff.findById(staff_id);
+
+    if (!staff) {
+      return res.status(404).json({
+        message: "Staff member not found.",
+      });
+    }
+
+    const complaint = await Complaint.findById(req.params.id);
+
+    if (!complaint) {
+      return res.status(404).json({
+        message: "Complaint not found.",
+      });
+    }
+
+    complaint.assigned_staff_id = staff._id;
+    complaint.status = "Assigned";
+
+    await complaint.save();
+
+    await ComplaintStatusHistory.create({
+      complaint_id: complaint._id,
+      status: "Assigned",
+      remarks: `Assigned to ${staff.name}.`,
+      changed_by: req.user.id,
+    });
+
+    res.json({
+      message: "Complaint assigned successfully.",
+    });
+
+  } catch (error) {
+    console.error("Assign complaint error:", error);
+
+    res.status(500).json({
+      message: "Could not assign complaint.",
+    });
+  }
+});
+
+
+// ======================================================
+// PUT /api/admin/complaints/:id/status
+// Update complaint status
+// ======================================================
+
+router.put("/complaints/:id/status", async (req, res) => {
+  try {
+    const {
+      status,
+      remarks,
+    } = req.body;
+
+    if (!status || !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({
+        message: "Please provide a valid status.",
+      });
+    }
+
+    const complaint = await Complaint.findById(req.params.id);
+
+    if (!complaint) {
+      return res.status(404).json({
+        message: "Complaint not found.",
+      });
+    }
+
+    complaint.status = status;
+    complaint.remarks = remarks || "";
+
+    await complaint.save();
+
+    await ComplaintStatusHistory.create({
+      complaint_id: complaint._id,
+      status,
+      remarks: remarks || "",
+      changed_by: req.user.id,
+    });
+
+    res.json({
+      message: "Complaint status updated.",
+    });
+
+  } catch (error) {
+    console.error("Update complaint status error:", error);
+
+    res.status(500).json({
+      message: "Could not update status.",
+    });
+  }
+});
+
+
+// ======================================================
+// GET /api/admin/stats
+// Dashboard statistics
+// ======================================================
+
+router.get("/stats", async (req, res) => {
+  try {
+    const total = await Complaint.countDocuments();
+
+    const statusCounts = await Complaint.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const typeCounts = await Complaint.aggregate([
+      {
+        $group: {
+          _id: "$complaint_type",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const byStatus = {
+      Submitted: 0,
+      Assigned: 0,
+      "In Progress": 0,
+      Resolved: 0,
+      Closed: 0,
+    };
+
+    statusCounts.forEach((item) => {
+      byStatus[item._id] = item.count;
+    });
+
+    const byType = {};
+
+    typeCounts.forEach((item) => {
+      byType[item._id] = item.count;
+    });
+
+    res.json({
+      total,
+      byStatus,
+      byType,
+    });
+
+  } catch (error) {
+    console.error("Admin stats error:", error);
+
+    res.status(500).json({
+      message: "Could not fetch statistics.",
+    });
+  }
+});
+
+
+// ======================================================
+// GET /api/admin/database/:table
+// Admin database viewer
+// ======================================================
+
+router.get("/database/:table", async (req, res) => {
+  try {
+    const { table } = req.params;
+
+    let rows = [];
+
+    // ---------------- USERS ----------------
+
+    if (table === "users") {
+      const users = await User.find()
+        .select("name email phone role createdAt")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      rows = users.map((u) => ({
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        role: u.role,
+        created_at: u.createdAt
+          ? u.createdAt.toISOString()
+          : null,
+      }));
+    }
+
+    // ---------------- STAFF ----------------
+
+    else if (table === "staff") {
+      const staff = await Staff.find()
+        .sort({ createdAt: -1 })
+        .lean();
+
+      rows = staff.map((s) => ({
+        id: s._id.toString(),
+        name: s.name,
+        phone: s.phone,
+        designation: s.designation,
+        zone: s.zone,
+        created_at: s.createdAt
+          ? s.createdAt.toISOString()
+          : null,
+      }));
+    }
+
+    // ---------------- COMPLAINTS ----------------
+
+    else if (table === "complaints") {
+      const complaints = await Complaint.find()
+        .populate("user_id", "name phone")
+        .populate("assigned_staff_id", "name")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      rows = complaints.map((c) => ({
+        id: c._id.toString(),
+
+        user_id: c.user_id
+          ? c.user_id._id.toString()
+          : null,
+
+        citizen_name: c.user_id
+          ? c.user_id.name
+          : null,
+
+        complaint_type: c.complaint_type,
+        description: c.description,
+        latitude: c.latitude,
+        longitude: c.longitude,
+        address: c.address,
+        status: c.status,
+
+        assigned_staff_id: c.assigned_staff_id
+          ? c.assigned_staff_id._id.toString()
+          : null,
+
+        assigned_staff: c.assigned_staff_id
+          ? c.assigned_staff_id.name
+          : null,
+
+        remarks: c.remarks,
+
+        created_at: c.createdAt
+          ? c.createdAt.toISOString()
+          : null,
+
+        updated_at: c.updatedAt
+          ? c.updatedAt.toISOString()
+          : null,
+      }));
+    }
+
+    // ---------------- STATUS HISTORY ----------------
+
+    else if (table === "complaint_status_history") {
+      const history = await ComplaintStatusHistory.find()
+        .populate("changed_by", "name")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      rows = history.map((h) => ({
+        id: h._id.toString(),
+
+        complaint_id: h.complaint_id.toString(),
+
+        status: h.status,
+
+        remarks: h.remarks,
+
+        changed_by: h.changed_by
+          ? h.changed_by._id.toString()
+          : null,
+
+        changed_by_name: h.changed_by
+          ? h.changed_by.name
+          : null,
+
+        changed_at: h.createdAt
+          ? h.createdAt.toISOString()
+          : null,
+      }));
+    }
+
+    else {
+      return res.status(400).json({
+        message: "Invalid table name.",
       });
     }
 
     res.json({
       table,
       count: rows.length,
-      rows
+      rows,
     });
-  });
+
+  } catch (error) {
+    console.error("Database viewer error:", error);
+
+    res.status(500).json({
+      message: "Could not fetch database records.",
+    });
+  }
 });
+
+
+module.exports = router;

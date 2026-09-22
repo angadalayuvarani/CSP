@@ -1,3 +1,4 @@
+const connectMongoDB = require("./config/mongodb");
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -6,8 +7,7 @@ const path = require("path");
 const authRoutes = require("./routes/auth");
 const complaintRoutes = require("./routes/complaints");
 const adminRoutes = require("./routes/admin");
-
-require("./db/db"); // initializes schema on startup
+ // initializes schema on startup
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -39,7 +39,7 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ message: err.message || "Something went wrong on the server." });
 });
-
+connectMongoDB();
 app.listen(PORT, () => {
   console.log(`AquaTrack backend running on http://localhost:${PORT}`);
 });
