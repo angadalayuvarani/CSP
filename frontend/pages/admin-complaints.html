@@ -22,30 +22,36 @@
 
   <div class="filter-bar">
     <select id="filterType">
-      <option value="">All types</option>
-      <select id="filterType">
-  <option value="">All types</option>
-  <option>Water Leakage</option>
-  <option>Water Overflow</option>
-  <option>Water Contamination</option>
-  <option>Low Water Pressure</option>
-  <option>Irregular Water Supply</option>
-  <option>No Water Supply</option>
-  <option>Pipeline Damage</option>
-  <option>Public Tap Damage</option>
-</select>
-    </select>
-    <select id="filterStatus">
-      <option value="">All statuses</option>
-      <option>Submitted</option>
-      <option>Assigned</option>
-      <option>In Progress</option>
-      <option>Resolved</option>
-      <option>Closed</option>
-    </select>
-    <input type="text" id="filterSearch" placeholder="Search by citizen, description, address…">
-    <button class="btn btn-ghost btn-sm" id="clearBtn">Clear filters</button>
-  </div>
+    <option value="">All types</option>
+    <option value="Water Leakage">Water Leakage</option>
+    <option value="Water Overflow">Water Overflow</option>
+    <option value="Water Contamination">Water Contamination</option>
+    <option value="Low Water Pressure">Low Water Pressure</option>
+    <option value="Irregular Water Supply">Irregular Water Supply</option>
+    <option value="No Water Supply">No Water Supply</option>
+    <option value="Pipeline Damage">Pipeline Damage</option>
+    <option value="Public Tap Damage">Public Tap Damage</option>
+  </select>
+
+  <select id="filterStatus">
+    <option value="">All statuses</option>
+    <option>Submitted</option>
+    <option>Assigned</option>
+    <option>In Progress</option>
+    <option>Resolved</option>
+    <option>Closed</option>
+  </select>
+
+  <input
+    type="text"
+    id="filterSearch"
+    placeholder="Search by citizen, description, address…"
+  >
+
+  <button class="btn btn-ghost btn-sm" id="clearBtn">
+    Clear filters
+  </button>
+</div>
 
   <div class="table-wrap">
     <table>
