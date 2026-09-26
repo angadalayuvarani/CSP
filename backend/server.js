@@ -40,6 +40,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: err.message || "Something went wrong on the server." });
 });
 connectMongoDB();
-app.listen(PORT, () => {
+app.listen(PORT,  "0.0.0.0", () => {
   console.log(`AquaTrack backend running on http://localhost:${PORT}`);
 });
