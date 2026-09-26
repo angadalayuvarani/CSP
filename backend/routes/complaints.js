@@ -13,6 +13,10 @@ const VALID_TYPES = [
   "Water Overflow",
   "Water Contamination",
   "Low Water Pressure",
+  "Irregular Water Supply",
+  "No Water Supply",
+  "Pipeline Damage",
+  "Public Tap Damage",
 ];
 
 // POST /api/complaints
